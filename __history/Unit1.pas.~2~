@@ -1,0 +1,303 @@
+unit Unit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
+  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.ExtCtrls,
+  Vcl.StdCtrls, Vcl.Menus, System.JSON, System.IOUtils;
+
+type
+  TNodeData = class
+    Title: string;
+    Content: string;
+    Level: Integer;
+  end;
+
+  TForm1 = class(TForm)
+    pnlLeft: TPanel;
+    pnlRight: TPanel;
+    Splitter1: TSplitter;
+    TreeView1: TTreeView;
+    Memo1: TMemo;
+    MainMenu1: TMainMenu;
+    mnuFile: TMenuItem;
+    mnuSave: TMenuItem;
+    mnuLoad: TMenuItem;
+    PopupMenu1: TPopupMenu;
+    mnuAddLevel1: TMenuItem;
+    mnuAddLevel2: TMenuItem;
+    mnuAddLevel3: TMenuItem;
+    mnuDelete: TMenuItem;
+    N1: TMenuItem;
+    SaveDialog1: TSaveDialog;
+    OpenDialog1: TOpenDialog;
+    procedure FormCreate(Sender: TObject);
+    procedure TreeView1Change(Sender: TObject; Node: TTreeNode);
+    procedure Memo1Change(Sender: TObject);
+    procedure mnuAddLevel1Click(Sender: TObject);
+    procedure mnuAddLevel2Click(Sender: TObject);
+    procedure mnuAddLevel3Click(Sender: TObject);
+    procedure mnuDeleteClick(Sender: TObject);
+    procedure mnuSaveClick(Sender: TObject);
+    procedure mnuLoadClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  private
+    FCurrentNode: TTreeNode;
+    procedure AddNode(Level: Integer);
+    procedure SaveTreeToJson(const FileName: string);
+    procedure LoadTreeFromJson(const FileName: string);
+    procedure ClearNodeData;
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  Caption := '三级目录记事本';
+  
+  // 设置窗体属性
+  Width := 800;
+  Height := 600;
+  Position := poScreenCenter;
+  
+  // 设置面板属性
+  pnlLeft.Width := 200;
+  
+  // 设置TreeView属性
+  TreeView1.Align := alClient;
+  TreeView1.HideSelection := False;
+  
+  // 设置Memo属性
+  Memo1.Align := alClient;
+  Memo1.ScrollBars := ssBoth;
+  
+  // 设置菜单项标题
+  mnuFile.Caption := '文件(&F)';
+  mnuSave.Caption := '保存(&S)';
+  mnuLoad.Caption := '打开(&O)';
+  mnuAddLevel1.Caption := '添加一级目录';
+  mnuAddLevel2.Caption := '添加二级目录';
+  mnuAddLevel3.Caption := '添加三级目录';
+  mnuDelete.Caption := '删除';
+  
+  // 设置对话框属性
+  SaveDialog1.Filter := '记事本文件(*.note)|*.note';
+  OpenDialog1.Filter := '记事本文件(*.note)|*.note';
+end;
+
+procedure TForm1.AddNode(Level: Integer);
+var
+  Node: TTreeNode;
+  Data: TNodeData;
+  Title: string;
+begin
+  Title := InputBox('新建目录', '请输入目录名称:', '');
+  if Title = '' then Exit;
+  
+  Data := TNodeData.Create;
+  Data.Title := Title;
+  Data.Content := '';
+  Data.Level := Level;
+  
+  case Level of
+    1: Node := TreeView1.Items.AddChild(nil, Title);
+    2: begin
+         if (TreeView1.Selected = nil) or (TNodeData(TreeView1.Selected.Data).Level <> 1) then
+         begin
+           ShowMessage('请先选择一级目录！');
+           Data.Free;
+           Exit;
+         end;
+         Node := TreeView1.Items.AddChild(TreeView1.Selected, Title);
+       end;
+    3: begin
+         if (TreeView1.Selected = nil) or (TNodeData(TreeView1.Selected.Data).Level <> 2) then
+         begin
+           ShowMessage('请先选择二级目录！');
+           Data.Free;
+           Exit;
+         end;
+         Node := TreeView1.Items.AddChild(TreeView1.Selected, Title);
+       end;
+  end;
+  
+  Node.Data := Data;
+  Node.Selected := True;
+end;
+
+procedure TForm1.TreeView1Change(Sender: TObject; Node: TTreeNode);
+begin
+  if Node = nil then Exit;
+  
+  FCurrentNode := Node;
+  if Assigned(Node.Data) then
+    Memo1.Text := TNodeData(Node.Data).Content;
+end;
+
+procedure TForm1.Memo1Change(Sender: TObject);
+begin
+  if FCurrentNode = nil then Exit;
+  
+  if Assigned(FCurrentNode.Data) then
+    TNodeData(FCurrentNode.Data).Content := Memo1.Text;
+end;
+
+procedure TForm1.mnuAddLevel1Click(Sender: TObject);
+begin
+  AddNode(1);
+end;
+
+procedure TForm1.mnuAddLevel2Click(Sender: TObject);
+begin
+  AddNode(2);
+end;
+
+procedure TForm1.mnuAddLevel3Click(Sender: TObject);
+begin
+  AddNode(3);
+end;
+
+procedure TForm1.mnuDeleteClick(Sender: TObject);
+begin
+  if TreeView1.Selected = nil then Exit;
+  
+  if MessageDlg('确定要删除选中的目录吗？', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+  begin
+    if Assigned(TreeView1.Selected.Data) then
+      TNodeData(TreeView1.Selected.Data).Free;
+    TreeView1.Selected.Delete;
+    Memo1.Clear;
+  end;
+end;
+
+procedure TForm1.SaveTreeToJson(const FileName: string);
+var
+  Root: TJSONObject;
+  NodesArray: TJSONArray;
+  
+  procedure AddNodeToJson(Node: TTreeNode; ParentArray: TJSONArray);
+  var
+    NodeObj: TJSONObject;
+    ChildArray: TJSONArray;
+    Child: TTreeNode;
+  begin
+    if not Assigned(Node) then Exit;
+    
+    NodeObj := TJSONObject.Create;
+    NodeObj.AddPair('title', TNodeData(Node.Data).Title);
+    NodeObj.AddPair('content', TNodeData(Node.Data).Content);
+    NodeObj.AddPair('level', TJSONNumber.Create(TNodeData(Node.Data).Level));
+    
+    if Node.HasChildren then
+    begin
+      ChildArray := TJSONArray.Create;
+      Child := Node.getFirstChild;
+      while Assigned(Child) do
+      begin
+        AddNodeToJson(Child, ChildArray);
+        Child := Child.getNextSibling;
+      end;
+      NodeObj.AddPair('children', ChildArray);
+    end;
+    
+    ParentArray.AddElement(NodeObj);
+  end;
+  
+begin
+  Root := TJSONObject.Create;
+  NodesArray := TJSONArray.Create;
+  
+  try
+    var Node := TreeView1.Items.GetFirstNode;
+    while Assigned(Node) do
+    begin
+      if Node.Level = 0 then
+        AddNodeToJson(Node, NodesArray);
+      Node := Node.getNextSibling;
+    end;
+    
+    Root.AddPair('nodes', NodesArray);
+    TFile.WriteAllText(FileName, Root.ToString);
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TForm1.LoadTreeFromJson(const FileName: string);
+var
+  JsonText: string;
+  Root: TJSONObject;
+  
+  procedure LoadNodeFromJson(ParentNode: TTreeNode; NodeObj: TJSONObject);
+  var
+    NewNode: TTreeNode;
+    Data: TNodeData;
+    ChildArray: TJSONArray;
+    I: Integer;
+  begin
+    Data := TNodeData.Create;
+    Data.Title := NodeObj.GetValue<string>('title');
+    Data.Content := NodeObj.GetValue<string>('content');
+    Data.Level := NodeObj.GetValue<Integer>('level');
+    
+    NewNode := TreeView1.Items.AddChild(ParentNode, Data.Title);
+    NewNode.Data := Data;
+    
+    if NodeObj.TryGetValue<TJSONArray>('children', ChildArray) then
+    begin
+      for I := 0 to ChildArray.Count - 1 do
+        LoadNodeFromJson(NewNode, ChildArray.Items[I] as TJSONObject);
+    end;
+  end;
+  
+begin
+  JsonText := TFile.ReadAllText(FileName);
+  Root := TJSONObject.ParseJSONValue(JsonText) as TJSONObject;
+  
+  try
+    ClearNodeData;
+    TreeView1.Items.Clear;
+    
+    var NodesArray := Root.GetValue<TJSONArray>('nodes');
+    for var I := 0 to NodesArray.Count - 1 do
+      LoadNodeFromJson(nil, NodesArray.Items[I] as TJSONObject);
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TForm1.mnuSaveClick(Sender: TObject);
+begin
+  if SaveDialog1.Execute then
+    SaveTreeToJson(SaveDialog1.FileName);
+end;
+
+procedure TForm1.mnuLoadClick(Sender: TObject);
+begin
+  if OpenDialog1.Execute then
+    LoadTreeFromJson(OpenDialog1.FileName);
+end;
+
+procedure TForm1.ClearNodeData;
+var
+  I: Integer;
+begin
+  for I := 0 to TreeView1.Items.Count - 1 do
+    if Assigned(TreeView1.Items[I].Data) then
+      TNodeData(TreeView1.Items[I].Data).Free;
+end;
+
+procedure TForm1.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  ClearNodeData;
+end;
+
+end.

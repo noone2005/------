@@ -1,0 +1,175 @@
+unit Unit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
+  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Vcl.ComCtrls;
+
+type
+  TMainForm = class(TForm)
+    pnlTop: TPanel;
+    lblTime: TLabel;
+    btnStart: TButton;
+    btnPause: TButton;
+    btnReset: TButton;
+    Timer1: TTimer;
+    GroupBox1: TGroupBox;
+    edtHours: TSpinEdit;
+    edtMinutes: TSpinEdit;
+    edtSeconds: TSpinEdit;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    procedure FormCreate(Sender: TObject);
+    procedure btnStartClick(Sender: TObject);
+    procedure btnPauseClick(Sender: TObject);
+    procedure btnResetClick(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+  private
+    FRemainingSeconds: Integer;
+    FIsRunning: Boolean;
+    procedure UpdateDisplay;
+    procedure ResetControls;
+  public
+    { Public declarations }
+  end;
+
+var
+  MainForm: TMainForm;
+
+implementation
+
+{$R *.dfm}
+
+procedure TMainForm.FormCreate(Sender: TObject);
+begin
+  Caption := '倒计时';
+  
+  // 设置窗体属性
+  Position := poScreenCenter;
+  BorderStyle := bsSingle;
+  BorderIcons := [biSystemMenu, biMinimize];
+  Width := 400;
+  Height := 300;
+  
+  // 设置时间显示标签
+  lblTime.Font.Size := 36;
+  lblTime.Font.Name := '微软雅黑';
+  lblTime.Caption := '00:00:00';
+  lblTime.Alignment := taCenter;
+  
+  // 设置按钮标题
+  btnStart.Caption := '开始';
+  btnPause.Caption := '暂停';
+  btnReset.Caption := '重置';
+  
+  // 设置输入框范围
+  edtHours.MinValue := 0;
+  edtHours.MaxValue := 23;
+  edtMinutes.MinValue := 0;
+  edtMinutes.MaxValue := 59;
+  edtSeconds.MinValue := 0;
+  edtSeconds.MaxValue := 59;
+  
+  // 初始化计时器
+  Timer1.Enabled := False;
+  Timer1.Interval := 1000;
+  
+  ResetControls;
+end;
+
+procedure TMainForm.btnStartClick(Sender: TObject);
+begin
+  if not FIsRunning then
+  begin
+    if FRemainingSeconds <= 0 then
+    begin
+      // 获取新的时间设置
+      FRemainingSeconds := edtHours.Value * 3600 + 
+                          edtMinutes.Value * 60 + 
+                          edtSeconds.Value;
+      
+      if FRemainingSeconds <= 0 then
+      begin
+        ShowMessage('请设置倒计时时间！');
+        Exit;
+      end;
+    end;
+    
+    Timer1.Enabled := True;
+    FIsRunning := True;
+    btnStart.Caption := '开始';
+    btnPause.Enabled := True;
+    
+    // 禁用输入框
+    edtHours.Enabled := False;
+    edtMinutes.Enabled := False;
+    edtSeconds.Enabled := False;
+  end;
+end;
+
+procedure TMainForm.btnPauseClick(Sender: TObject);
+begin
+  Timer1.Enabled := False;
+  FIsRunning := False;
+  btnStart.Caption := '继续';
+end;
+
+procedure TMainForm.btnResetClick(Sender: TObject);
+begin
+  Timer1.Enabled := False;
+  FIsRunning := False;
+  FRemainingSeconds := 0;
+  ResetControls;
+  UpdateDisplay;
+end;
+
+procedure TMainForm.Timer1Timer(Sender: TObject);
+begin
+  if FRemainingSeconds > 0 then
+  begin
+    Dec(FRemainingSeconds);
+    UpdateDisplay;
+  end;
+  
+  if FRemainingSeconds <= 0 then
+  begin
+    Timer1.Enabled := False;
+    FIsRunning := False;
+    ResetControls;
+    MessageBeep(MB_ICONINFORMATION);
+    ShowMessage('时间到！');
+  end;
+end;
+
+procedure TMainForm.UpdateDisplay;
+var
+  Hours, Minutes, Seconds: Integer;
+begin
+  Hours := FRemainingSeconds div 3600;
+  Minutes := (FRemainingSeconds mod 3600) div 60;
+  Seconds := FRemainingSeconds mod 60;
+  
+  lblTime.Caption := Format('%.2d:%.2d:%.2d', [Hours, Minutes, Seconds]);
+end;
+
+procedure TMainForm.ResetControls;
+begin
+  btnStart.Caption := '开始';
+  btnStart.Enabled := True;
+  btnPause.Enabled := False;
+  
+  // 启用输入框
+  edtHours.Enabled := True;
+  edtMinutes.Enabled := True;
+  edtSeconds.Enabled := True;
+  
+  // 清空输入框
+  edtHours.Value := 0;
+  edtMinutes.Value := 0;
+  edtSeconds.Value := 0;
+end;
+
+end. 

@@ -347,78 +347,7 @@ procedure TForm1.SaveTreeToJson(const FileName: string);
 var
   Root: TJSONObject;
   NodesArray: TJSONArray;
-  JsonStr: string;
-  
-  // 添加 JSON 格式化函数
-  function FormatJson(const JsonString: string): string;
-  var
-    IndentLevel: Integer;
-    I: Integer;
-    C: Char;
-    InQuotes: Boolean;
-    PrevChar: Char;
-    
-    procedure AddIndent;
-    var
-      J: Integer;
-    begin
-      Result := Result + #13#10;
-      for J := 1 to IndentLevel * 2 do
-        Result := Result + ' ';
-    end;
-    
-  begin
-    Result := '';
-    IndentLevel := 0;
-    InQuotes := False;
-    PrevChar := #0;
-    
-    for I := 1 to Length(JsonString) do
-    begin
-      C := JsonString[I];
-      
-      case C of
-        '"': 
-          if PrevChar <> '\' then
-            InQuotes := not InQuotes;
-            
-        '{', '[':
-          if not InQuotes then
-          begin
-            Inc(IndentLevel);
-            Result := Result + C;
-            AddIndent;
-          end
-          else
-            Result := Result + C;
-            
-        '}', ']':
-          if not InQuotes then
-          begin
-            Dec(IndentLevel);
-            AddIndent;
-            Result := Result + C;
-          end
-          else
-            Result := Result + C;
-            
-        ',':
-          if not InQuotes then
-          begin
-            Result := Result + C;
-            AddIndent;
-          end
-          else
-            Result := Result + C;
-            
-        else
-          Result := Result + C;
-      end;
-      
-      PrevChar := C;
-    end;
-  end;
-  
+
   procedure AddNodeToJson(Node: TTreeNode; ParentArray: TJSONArray);
   var
     NodeObj: TJSONObject;
@@ -426,36 +355,48 @@ var
     Child: TTreeNode;
   begin
     if not Assigned(Node) then Exit;
+    if not Assigned(Node.Data) then Exit;  // 添加数据检查
     
     NodeObj := TJSONObject.Create;
-    NodeObj.AddPair('title', TNodeData(Node.Data).Title);
-    NodeObj.AddPair('content', TNodeData(Node.Data).Content);
-    NodeObj.AddPair('level', TJSONNumber.Create(TNodeData(Node.Data).Level));
-    NodeObj.AddPair('expanded', TJSONBool.Create(Node.Expanded));
-    
-    if Node.HasChildren then
-    begin
-      ChildArray := TJSONArray.Create;
-      Child := Node.getFirstChild;
-      while Assigned(Child) do
+    try
+      // 确保所有值都是有效的
+      NodeObj.AddPair('title', TJSONString.Create(TNodeData(Node.Data).Title));
+      NodeObj.AddPair('content', TJSONString.Create(TNodeData(Node.Data).Content));
+      NodeObj.AddPair('level', TJSONNumber.Create(TNodeData(Node.Data).Level));
+      NodeObj.AddPair('expanded', TJSONBool.Create(Node.Expanded));
+      
+      if Node.HasChildren then
       begin
-        AddNodeToJson(Child, ChildArray);
-        Child := Child.getNextSibling;
+        ChildArray := TJSONArray.Create;
+        Child := Node.getFirstChild;
+        while Assigned(Child) do
+        begin
+          AddNodeToJson(Child, ChildArray);
+          Child := Child.getNextSibling;
+        end;
+        NodeObj.AddPair('children', ChildArray);
       end;
-      NodeObj.AddPair('children', ChildArray);
+      
+      ParentArray.AddElement(NodeObj);
+    except
+      NodeObj.Free;
+      raise;
     end;
-    
-    ParentArray.AddElement(NodeObj);
   end;
-  
+
 begin
   Root := TJSONObject.Create;
   NodesArray := TJSONArray.Create;
   
   try
-    Root.AddPair('version', '1.1');
-    Root.AddPair('saveTime', DateTimeToStr(Now));
+    // 使用 TJSONString.Create 确保正确的字符串格式
+    Root.AddPair('version', TJSONString.Create('1.1'));
+    Root.AddPair('saveTime', TJSONString.Create(DateTimeToStr(Now)));
     
+    // 添加空的节点数组
+    Root.AddPair('nodes', NodesArray);
+    
+    // 添加所有根节点
     var Node := TreeView1.Items.GetFirstNode;
     while Assigned(Node) do
     begin
@@ -464,13 +405,8 @@ begin
       Node := Node.getNextSibling;
     end;
     
-    Root.AddPair('nodes', NodesArray);
-    
-    // 格式化 JSON 字符串
-    JsonStr := FormatJson(Root.ToString);
-    
-    // 保存格式化后的 JSON 字符串
-    TFile.WriteAllText(FileName, JsonStr, TEncoding.UTF8);
+    // 直接保存 JSON 字符串
+    TFile.WriteAllText(FileName, Root.ToString, TEncoding.UTF8);
   finally
     Root.Free;
   end;
@@ -482,6 +418,8 @@ var
   Root: TJSONObject;
   SaveTime: string;
   Version: string;
+  NodesArray: TJSONArray;
+  JsonValue: TJSONValue;
 
   procedure LoadNodeFromJson(ParentNode: TTreeNode; NodeObj: TJSONObject);
   var
@@ -492,21 +430,34 @@ var
     IsExpanded: Boolean;
   begin
     Data := TNodeData.Create;
-    Data.Title := NodeObj.GetValue<string>('title');
-    Data.Content := NodeObj.GetValue<string>('content');
-    Data.Level := NodeObj.GetValue<Integer>('level');
-    
-    NewNode := TreeView1.Items.AddChild(ParentNode, Data.Title);
-    NewNode.Data := Data;
-    
-    // 恢复节点的展开状态
-    if NodeObj.TryGetValue<Boolean>('expanded', IsExpanded) then
-      NewNode.Expanded := IsExpanded;
-    
-    if NodeObj.TryGetValue<TJSONArray>('children', ChildArray) then
-    begin
-      for I := 0 to ChildArray.Count - 1 do
-        LoadNodeFromJson(NewNode, ChildArray.Items[I] as TJSONObject);
+    try
+      // 添加错误检查
+      if not NodeObj.TryGetValue<string>('title', Data.Title) then
+        Data.Title := '未命名';
+      if not NodeObj.TryGetValue<string>('content', Data.Content) then
+        Data.Content := '';
+      if not NodeObj.TryGetValue<Integer>('level', Data.Level) then
+        Data.Level := 1;
+      
+      NewNode := TreeView1.Items.AddChild(ParentNode, Data.Title);
+      NewNode.Data := Data;
+      
+      // 恢复节点的展开状态
+      if NodeObj.TryGetValue<Boolean>('expanded', IsExpanded) then
+        NewNode.Expanded := IsExpanded;
+      
+      // 检查是否有子节点
+      if NodeObj.TryGetValue<TJSONArray>('children', ChildArray) then
+      begin
+        for I := 0 to ChildArray.Count - 1 do
+        begin
+          if ChildArray.Items[I] is TJSONObject then
+            LoadNodeFromJson(NewNode, ChildArray.Items[I] as TJSONObject);
+        end;
+      end;
+    except
+      Data.Free;
+      raise;
     end;
   end;
 
@@ -514,32 +465,67 @@ begin
   if not FileExists(FileName) then
     Exit;
     
-  JsonText := TFile.ReadAllText(FileName, TEncoding.UTF8);
-  Root := TJSONObject.ParseJSONValue(JsonText) as TJSONObject;
-  
   try
-    // 检查文件版本 - 修改版本检查逻辑
-    if Root.TryGetValue<string>('version', Version) then
-    begin
-      if not (Version = '1.0') and not (Version = '1.1') then
-        raise Exception.Create('不支持的文件版本');
-    end;
+    // 读取文件内容
+    JsonText := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    if JsonText = '' then
+      raise Exception.Create('文件为空');
       
-    // 获取保存时间
-    if Root.TryGetValue<string>('saveTime', SaveTime) then
-      StatusBar1.SimpleText := '最后保存时间: ' + SaveTime;
-    
-    ClearNodeData;
-    TreeView1.Items.Clear;
-    
-    var NodesArray := Root.GetValue<TJSONArray>('nodes');
-    if Assigned(NodesArray) then
-    begin
+    // 解析 JSON
+    JsonValue := TJSONObject.ParseJSONValue(JsonText);
+    if not Assigned(JsonValue) then
+      raise Exception.Create('JSON 解析失败');
+      
+    try
+      if not (JsonValue is TJSONObject) then
+      begin
+        JsonValue.Free;
+        raise Exception.Create('JSON 根节点必须是对象类型');
+      end;
+      
+      Root := JsonValue as TJSONObject;
+      
+      // 检查文件版本
+      if Root.TryGetValue<string>('version', Version) then
+      begin
+        if not (Version = '1.0') and not (Version = '1.1') then
+          raise Exception.Create('不支持的文件版本: ' + Version);
+      end;
+        
+      // 获取保存时间
+      if Root.TryGetValue<string>('saveTime', SaveTime) then
+        StatusBar1.SimpleText := '最后保存时间: ' + SaveTime;
+      
+      ClearNodeData;
+      TreeView1.Items.Clear;
+      
+      // 检查并获取节点数组
+      if not Root.TryGetValue<TJSONArray>('nodes', NodesArray) then
+        raise Exception.Create('找不到 nodes 节点');
+        
+      if not Assigned(NodesArray) then
+        raise Exception.Create('nodes 节点为空');
+        
       for var I := 0 to NodesArray.Count - 1 do
+      begin
+        if not (NodesArray.Items[I] is TJSONObject) then
+          raise Exception.Create(Format('第 %d 个节点不是有效的对象', [I + 1]));
+          
         LoadNodeFromJson(nil, NodesArray.Items[I] as TJSONObject);
+      end;
+      
+    finally
+      Root.Free; // JsonValue 已经转换为 Root，所以这里释放 Root 即可
     end;
-  finally
-    Root.Free;
+    
+  except
+    on E: Exception do
+    begin
+      ClearNodeData;
+      TreeView1.Items.Clear;
+      raise Exception.Create('加载文件失败: ' + E.Message + #13#10 + 
+        '文件内容: ' + Copy(JsonText, 1, 100) + '...');  // 显示部分文件内容以帮助调试
+    end;
   end;
 end;
 
@@ -639,7 +625,48 @@ end;
 
 procedure TForm1.LoadLastSession;
 begin
-  // 实现 LoadLastSession 方法的逻辑
+  if FileExists(FAutoSaveFile) then
+  begin
+    StatusBar1.SimpleText := '找到笔记文件，正在加载...';
+    try
+      LoadTreeFromJson(FAutoSaveFile);
+      if TreeView1.Items.Count > 0 then
+      begin
+        TreeView1.Items[0].Expand(True); // 展开第一个节点
+        TreeView1.Selected := TreeView1.Items[0]; // 选择第一个节点
+        StatusBar1.SimpleText := '已成功加载: 我的笔记.note';
+      end
+      else
+      begin
+        StatusBar1.SimpleText := '笔记文件为空';
+      end;
+    except
+      on E: Exception do
+      begin
+        StatusBar1.SimpleText := '加载失败: ' + E.Message;
+        MessageDlg('加载笔记文件失败: ' + E.Message + #13#10 + 
+                  '将创建新的笔记文件。', mtWarning, [mbOK], 0);
+        
+        // 备份损坏的文件
+        try
+          if FileExists(FAutoSaveFile) then
+          begin
+            var BackupFile := ChangeFileExt(FAutoSaveFile, '.corrupted.' + 
+              FormatDateTime('yyyymmddhhnnss', Now));
+            RenameFile(FAutoSaveFile, BackupFile);
+            StatusBar1.SimpleText := '已备份损坏文件到: ' + ExtractFileName(BackupFile);
+          end;
+        except
+          on E: Exception do
+            StatusBar1.SimpleText := '备份损坏文件失败: ' + E.Message;
+        end;
+      end;
+    end;
+  end
+  else
+  begin
+    StatusBar1.SimpleText := '未找到笔记文件，将在保存时创建';
+  end;
 end;
 
 end.

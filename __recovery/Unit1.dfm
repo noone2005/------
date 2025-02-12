@@ -3,7 +3,7 @@ object Form1: TForm1
   Top = 0
   Caption = #22823#39134#30340#31508#35760#26412
   ClientHeight = 599
-  ClientWidth = 865
+  ClientWidth = 985
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -38,19 +38,16 @@ object Form1: TForm1
       Width = 311
       Height = 19
       Panels = <>
-      ExplicitWidth = 383
     end
   end
   object pnlRight: TPanel
     Left = 313
     Top = 0
-    Width = 552
+    Width = 480
     Height = 599
-    Align = alClient
+    Align = alLeft
     Caption = 'pnlRight'
     TabOrder = 1
-    ExplicitLeft = 385
-    ExplicitWidth = 480
     object Splitter1: TSplitter
       Left = 1
       Top = 1
@@ -60,13 +57,39 @@ object Form1: TForm1
     object Memo1: TMemo
       Left = 9
       Top = 1
-      Width = 542
+      Width = 470
       Height = 597
       Align = alClient
       Lines.Strings = (
         'Memo1')
       TabOrder = 0
       OnChange = Memo1Change
+      ExplicitWidth = 416
+    end
+  end
+  object Panel1: TPanel
+    Left = 800
+    Top = 0
+    Width = 185
+    Height = 599
+    Align = alRight
+    Caption = 'Panel1'
+    TabOrder = 2
+    ExplicitLeft = 872
+    ExplicitTop = 424
+    ExplicitHeight = 41
+    object ListBox1: TListBox
+      Left = 1
+      Top = 1
+      Width = 183
+      Height = 597
+      Align = alClient
+      ItemHeight = 15
+      TabOrder = 0
+      ExplicitLeft = 64
+      ExplicitTop = 336
+      ExplicitWidth = 121
+      ExplicitHeight = 97
     end
   end
   object MainMenu1: TMainMenu

@@ -3948,6 +3948,651 @@ end;
 
 ---
 
+_**User**_
+
+自动加载我的笔记.note
+
+---
+
+_**Assistant**_
+
+
+
+
+
+让我们实现 LoadLastSession 方法，使其能够自动加载"我的笔记.note"：
+
+```delphi:Unit1.pas
+procedure TForm1.LoadLastSession;
+begin
+  if FileExists(FAutoSaveFile) then
+  begin
+    StatusBar1.SimpleText := '找到笔记文件，正在加载...';
+    try
+      LoadTreeFromJson(FAutoSaveFile);
+      if TreeView1.Items.Count > 0 then
+      begin
+        TreeView1.Items[0].Expand(True); // 展开第一个节点
+        TreeView1.Selected := TreeView1.Items[0]; // 选择第一个节点
+        StatusBar1.SimpleText := '已成功加载: 我的笔记.note';
+      end
+      else
+      begin
+        StatusBar1.SimpleText := '笔记文件为空';
+      end;
+    except
+      on E: Exception do
+      begin
+        StatusBar1.SimpleText := '加载失败: ' + E.Message;
+        MessageDlg('加载笔记文件失败: ' + E.Message + #13#10 + 
+                  '将创建新的笔记文件。', mtWarning, [mbOK], 0);
+        
+        // 备份损坏的文件
+        try
+          if FileExists(FAutoSaveFile) then
+          begin
+            var BackupFile := ChangeFileExt(FAutoSaveFile, '.corrupted.' + 
+              FormatDateTime('yyyymmddhhnnss', Now));
+            RenameFile(FAutoSaveFile, BackupFile);
+            StatusBar1.SimpleText := '已备份损坏文件到: ' + ExtractFileName(BackupFile);
+          end;
+        except
+          on E: Exception do
+            StatusBar1.SimpleText := '备份损坏文件失败: ' + E.Message;
+        end;
+      end;
+    end;
+  end
+  else
+  begin
+    StatusBar1.SimpleText := '未找到笔记文件，将在保存时创建';
+  end;
+end;
+```
+
+这个实现：
+1. 检查"我的笔记.note"是否存在
+2. 如果存在则尝试加载
+3. 加载成功后展开第一个节点
+4. 如果文件损坏会创建备份
+5. 提供清晰的状态提示
+
+现在程序启动时会：
+1. 自动查找并加载"我的笔记.note"
+2. 显示加载状态
+3. 处理可能的错误情况
+4. 保护已有数据
+
+---
+
+_**User**_
+
+value 'nodes' not found
+
+---
+
+_**Assistant**_
+
+
+
+
+
+这个错误是因为在加载 JSON 文件时，找不到 'nodes' 节点。让我们修改 LoadTreeFromJson 方法，添加更多的错误检查：
+
+```delphi:Unit1.pas
+procedure TForm1.LoadTreeFromJson(const FileName: string);
+var
+  JsonText: string;
+  Root: TJSONObject;
+  SaveTime: string;
+  Version: string;
+  NodesArray: TJSONArray;
+
+  procedure LoadNodeFromJson(ParentNode: TTreeNode; NodeObj: TJSONObject);
+  var
+    NewNode: TTreeNode;
+    Data: TNodeData;
+    ChildArray: TJSONArray;
+    I: Integer;
+    IsExpanded: Boolean;
+  begin
+    Data := TNodeData.Create;
+    try
+      // 添加错误检查
+      if not NodeObj.TryGetValue<string>('title', Data.Title) then
+        Data.Title := '未命名';
+      if not NodeObj.TryGetValue<string>('content', Data.Content) then
+        Data.Content := '';
+      if not NodeObj.TryGetValue<Integer>('level', Data.Level) then
+        Data.Level := 1;
+      
+      NewNode := TreeView1.Items.AddChild(ParentNode, Data.Title);
+      NewNode.Data := Data;
+      
+      // 恢复节点的展开状态
+      if NodeObj.TryGetValue<Boolean>('expanded', IsExpanded) then
+        NewNode.Expanded := IsExpanded;
+      
+      // 检查是否有子节点
+      if NodeObj.TryGetValue<TJSONArray>('children', ChildArray) then
+      begin
+        for I := 0 to ChildArray.Count - 1 do
+        begin
+          if ChildArray.Items[I] is TJSONObject then
+            LoadNodeFromJson(NewNode, ChildArray.Items[I] as TJSONObject);
+        end;
+      end;
+    except
+      Data.Free;
+      raise;
+    end;
+  end;
+
+begin
+  if not FileExists(FileName) then
+    Exit;
+    
+  try
+    JsonText := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    Root := TJSONObject.ParseJSONValue(JsonText) as TJSONObject;
+    if not Assigned(Root) then
+      raise Exception.Create('无效的JSON格式');
+      
+    try
+      // 检查文件版本
+      if Root.TryGetValue<string>('version', Version) then
+      begin
+        if not (Version = '1.0') and not (Version = '1.1') then
+          raise Exception.Create('不支持的文件版本');
+      end;
+        
+      // 获取保存时间
+      if Root.TryGetValue<string>('saveTime', SaveTime) then
+        StatusBar1.SimpleText := '最后保存时间: ' + SaveTime;
+      
+      ClearNodeData;
+      TreeView1.Items.Clear;
+      
+      // 检查并获取节点数组
+      if not Root.TryGetValue<TJSONArray>('nodes', NodesArray) then
+        raise Exception.Create('找不到节点数据');
+        
+      if Assigned(NodesArray) then
+      begin
+        for var I := 0 to NodesArray.Count - 1 do
+        begin
+          if NodesArray.Items[I] is TJSONObject then
+            LoadNodeFromJson(nil, NodesArray.Items[I] as TJSONObject);
+        end;
+      end;
+    finally
+      Root.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      ClearNodeData;
+      TreeView1.Items.Clear;
+      raise Exception.Create('加载文件失败: ' + E.Message);
+    end;
+  end;
+end;
+```
+
+
+主要改进：
+1. 添加了更多的错误检查
+2. 使用 TryGetValue 替代 GetValue
+3. 检查 JSON 对象的类型
+4. 添加了默认值处理
+5. 改进了错误信息
+6. 确保在出错时清理资源
+
+这样可以：
+1. 更好地处理损坏的文件
+2. 提供更明确的错误信息
+3. 防止程序崩溃
+4. 保护用户数据
+
+---
+
+_**User**_
+
+加载文件失败：无效的JSON格式
+
+---
+
+_**Assistant**_
+
+看起来是 JSON 文件格式有问题。让我们检查一下 JSON 文件的内容，并修改 LoadTreeFromJson 方法以添加更详细的错误检查：
+
+```delphi:Unit1.pas
+procedure TForm1.LoadTreeFromJson(const FileName: string);
+var
+  JsonText: string;
+  Root: TJSONObject;
+  SaveTime: string;
+  Version: string;
+  NodesArray: TJSONArray;
+  JsonValue: TJSONValue;
+begin
+  if not FileExists(FileName) then
+    Exit;
+    
+  try
+    // 读取文件内容
+    JsonText := TFile.ReadAllText(FileName, TEncoding.UTF8);
+    if JsonText = '' then
+      raise Exception.Create('文件为空');
+      
+    // 解析 JSON
+    JsonValue := TJSONObject.ParseJSONValue(JsonText);
+    if not Assigned(JsonValue) then
+      raise Exception.Create('JSON 解析失败');
+      
+    try
+      if not (JsonValue is TJSONObject) then
+      begin
+        JsonValue.Free;
+        raise Exception.Create('JSON 根节点必须是对象类型');
+      end;
+      
+      Root := JsonValue as TJSONObject;
+      
+      // 检查文件版本
+      if Root.TryGetValue<string>('version', Version) then
+      begin
+        if not (Version = '1.0') and not (Version = '1.1') then
+          raise Exception.Create('不支持的文件版本: ' + Version);
+      end;
+        
+      // 获取保存时间
+      if Root.TryGetValue<string>('saveTime', SaveTime) then
+        StatusBar1.SimpleText := '最后保存时间: ' + SaveTime;
+      
+      ClearNodeData;
+      TreeView1.Items.Clear;
+      
+      // 检查并获取节点数组
+      if not Root.TryGetValue<TJSONArray>('nodes', NodesArray) then
+        raise Exception.Create('找不到 nodes 节点');
+        
+      if not Assigned(NodesArray) then
+        raise Exception.Create('nodes 节点为空');
+        
+      for var I := 0 to NodesArray.Count - 1 do
+      begin
+        if not (NodesArray.Items[I] is TJSONObject) then
+          raise Exception.Create(Format('第 %d 个节点不是有效的对象', [I + 1]));
+          
+        LoadNodeFromJson(nil, NodesArray.Items[I] as TJSONObject);
+      end;
+      
+    finally
+      Root.Free; // JsonValue 已经转换为 Root，所以这里释放 Root 即可
+    end;
+    
+  except
+    on E: Exception do
+    begin
+      ClearNodeData;
+      TreeView1.Items.Clear;
+      raise Exception.Create('加载文件失败: ' + E.Message + #13#10 + 
+        '文件内容: ' + Copy(JsonText, 1, 100) + '...');  // 显示部分文件内容以帮助调试
+    end;
+  end;
+end;
+```
+
+这个修改：
+1. 添加了更详细的错误检查
+2. 显示具体的错误原因
+3. 在错误信息中包含部分文件内容
+4. 改进了内存管理
+
+您可以：
+1. 检查 "我的笔记.note" 文件是否是有效的 JSON 格式
+2. 尝试手动打开文件查看内容
+3. 如果文件已损坏，可以删除它让程序创建新文件
+
+需要我帮您检查文件内容吗？
+
+---
+
+_**User**_
+
+[dcc32 Error] Unit1.pas(537): E2003 Undeclared identifier: 'LoadNodeFromJson'
+
+---
+
+_**Assistant**_
+
+
+
+
+
+看起来我们删除了 LoadNodeFromJson 过程但仍在使用它。让我们把这个过程加回来：
+
+```delphi:Unit1.pas
+procedure TForm1.LoadTreeFromJson(const FileName: string);
+var
+  JsonText: string;
+  Root: TJSONObject;
+  SaveTime: string;
+  Version: string;
+  NodesArray: TJSONArray;
+  JsonValue: TJSONValue;
+
+  procedure LoadNodeFromJson(ParentNode: TTreeNode; NodeObj: TJSONObject);
+  var
+    NewNode: TTreeNode;
+    Data: TNodeData;
+    ChildArray: TJSONArray;
+    I: Integer;
+    IsExpanded: Boolean;
+  begin
+    Data := TNodeData.Create;
+    try
+      // 添加错误检查
+      if not NodeObj.TryGetValue<string>('title', Data.Title) then
+        Data.Title := '未命名';
+      if not NodeObj.TryGetValue<string>('content', Data.Content) then
+        Data.Content := '';
+      if not NodeObj.TryGetValue<Integer>('level', Data.Level) then
+        Data.Level := 1;
+      
+      NewNode := TreeView1.Items.AddChild(ParentNode, Data.Title);
+      NewNode.Data := Data;
+      
+      // 恢复节点的展开状态
+      if NodeObj.TryGetValue<Boolean>('expanded', IsExpanded) then
+        NewNode.Expanded := IsExpanded;
+      
+      // 检查是否有子节点
+      if NodeObj.TryGetValue<TJSONArray>('children', ChildArray) then
+      begin
+        for I := 0 to ChildArray.Count - 1 do
+        begin
+          if ChildArray.Items[I] is TJSONObject then
+            LoadNodeFromJson(NewNode, ChildArray.Items[I] as TJSONObject);
+        end;
+      end;
+    except
+      Data.Free;
+      raise;
+    end;
+  end;
+
+begin
+  // ... rest of the LoadTreeFromJson implementation ...
+end;
+```
+
+这个嵌套过程 LoadNodeFromJson 负责：
+1. 从 JSON 对象创建树节点
+2. 设置节点的标题和内容
+3. 恢复节点的展开状态
+4. 递归处理子节点
+5. 处理错误情况
+
+现在编译错误应该解决了。
+
+---
+
+_**User**_
+
+修改图片中的错误
+
+---
+
+_**Assistant**_
+
+
+
+从错误信息来看，JSON 文件的格式有问题。让我们修改 SaveTreeToJson 方法，确保生成正确的 JSON 格式：
+
+```delphi:Unit1.pas
+procedure TForm1.SaveTreeToJson(const FileName: string);
+var
+  Root: TJSONObject;
+  NodesArray: TJSONArray;
+  JsonStr: string;
+  
+  procedure AddNodeToJson(Node: TTreeNode; ParentArray: TJSONArray);
+  var
+    NodeObj: TJSONObject;
+    ChildArray: TJSONArray;
+    Child: TTreeNode;
+  begin
+    if not Assigned(Node) then Exit;
+    if not Assigned(Node.Data) then Exit;  // 添加数据检查
+    
+    NodeObj := TJSONObject.Create;
+    try
+      // 确保所有值都是有效的
+      NodeObj.AddPair('title', TJSONString.Create(TNodeData(Node.Data).Title));
+      NodeObj.AddPair('content', TJSONString.Create(TNodeData(Node.Data).Content));
+      NodeObj.AddPair('level', TJSONNumber.Create(TNodeData(Node.Data).Level));
+      NodeObj.AddPair('expanded', TJSONBool.Create(Node.Expanded));
+      
+      if Node.HasChildren then
+      begin
+        ChildArray := TJSONArray.Create;
+        Child := Node.getFirstChild;
+        while Assigned(Child) do
+        begin
+          AddNodeToJson(Child, ChildArray);
+          Child := Child.getNextSibling;
+        end;
+        NodeObj.AddPair('children', ChildArray);
+      end;
+      
+      ParentArray.AddElement(NodeObj);
+    except
+      NodeObj.Free;
+      raise;
+    end;
+  end;
+  
+begin
+  Root := TJSONObject.Create;
+  NodesArray := TJSONArray.Create;
+  
+  try
+    // 使用 TJSONString.Create 确保正确的字符串格式
+    Root.AddPair('version', TJSONString.Create('1.1'));
+    Root.AddPair('saveTime', TJSONString.Create(DateTimeToStr(Now)));
+    
+    // 添加空的节点数组
+    Root.AddPair('nodes', NodesArray);
+    
+    // 添加所有根节点
+    var Node := TreeView1.Items.GetFirstNode;
+    while Assigned(Node) do
+    begin
+      if Node.Level = 0 then
+        AddNodeToJson(Node, NodesArray);
+      Node := Node.getNextSibling;
+    end;
+    
+    // 格式化 JSON 字符串
+    JsonStr := FormatJson(Root.ToString);
+    
+    // 保存格式化后的 JSON 字符串
+    TFile.WriteAllText(FileName, JsonStr, TEncoding.UTF8);
+  finally
+    Root.Free;
+  end;
+end;
+```
+
+主要改进：
+1. 使用 TJSONString.Create 确保字符串值正确格式化
+2. 添加数据有效性检查
+3. 改进错误处理
+4. 确保 JSON 结构完整
+5. 使用 try-finally 确保内存正确释放
+
+这样应该能解决 JSON 格式错误的问题。如果还有问题，我们可以：
+1. 添加更多的数据验证
+2. 添加更详细的错误信息
+3. 实现数据修复功能
+
+---
+
+_**User**_
+
+[dcc32 Error] Unit1.pas(410): E2003 Undeclared identifier: 'FormatJson'
+
+---
+
+_**Assistant**_
+
+
+
+
+
+看起来我们删除了 FormatJson 函数但仍在使用它。让我们修改 SaveTreeToJson 方法，直接使用 Root.ToString：
+
+```delphi:Unit1.pas
+procedure TForm1.SaveTreeToJson(const FileName: string);
+var
+  Root: TJSONObject;
+  NodesArray: TJSONArray;
+begin
+  Root := TJSONObject.Create;
+  NodesArray := TJSONArray.Create;
+  
+  try
+    // 使用 TJSONString.Create 确保正确的字符串格式
+    Root.AddPair('version', TJSONString.Create('1.1'));
+    Root.AddPair('saveTime', TJSONString.Create(DateTimeToStr(Now)));
+    
+    // 添加空的节点数组
+    Root.AddPair('nodes', NodesArray);
+    
+    // 添加所有根节点
+    var Node := TreeView1.Items.GetFirstNode;
+    while Assigned(Node) do
+    begin
+      if Node.Level = 0 then
+        AddNodeToJson(Node, NodesArray);
+      Node := Node.getNextSibling;
+    end;
+    
+    // 直接保存 JSON 字符串
+    TFile.WriteAllText(FileName, Root.ToString, TEncoding.UTF8);
+  finally
+    Root.Free;
+  end;
+end;
+```
+
+
+主要改动：
+1. 删除了 JsonStr 变量
+2. 直接使用 Root.ToString 保存
+3. 移除了格式化功能
+
+这样应该能解决编译错误，同时保持 JSON 文件的正确性。虽然文件可能不会那么易读，但功能不受影响。
+
+---
+
+_**User**_
+
+[dcc32 Error] Unit1.pas(367): E2003 Undeclared identifier: 'AddNodeToJson'
+
+---
+
+_**Assistant**_
+
+
+
+
+
+我们需要把 AddNodeToJson 过程加回来。这个过程是 SaveTreeToJson 方法中的一个重要部分：
+
+```delphi:Unit1.pas
+procedure TForm1.SaveTreeToJson(const FileName: string);
+var
+  Root: TJSONObject;
+  NodesArray: TJSONArray;
+
+  procedure AddNodeToJson(Node: TTreeNode; ParentArray: TJSONArray);
+  var
+    NodeObj: TJSONObject;
+    ChildArray: TJSONArray;
+    Child: TTreeNode;
+  begin
+    if not Assigned(Node) then Exit;
+    if not Assigned(Node.Data) then Exit;  // 添加数据检查
+    
+    NodeObj := TJSONObject.Create;
+    try
+      // 确保所有值都是有效的
+      NodeObj.AddPair('title', TJSONString.Create(TNodeData(Node.Data).Title));
+      NodeObj.AddPair('content', TJSONString.Create(TNodeData(Node.Data).Content));
+      NodeObj.AddPair('level', TJSONNumber.Create(TNodeData(Node.Data).Level));
+      NodeObj.AddPair('expanded', TJSONBool.Create(Node.Expanded));
+      
+      if Node.HasChildren then
+      begin
+        ChildArray := TJSONArray.Create;
+        Child := Node.getFirstChild;
+        while Assigned(Child) do
+        begin
+          AddNodeToJson(Child, ChildArray);
+          Child := Child.getNextSibling;
+        end;
+        NodeObj.AddPair('children', ChildArray);
+      end;
+      
+      ParentArray.AddElement(NodeObj);
+    except
+      NodeObj.Free;
+      raise;
+    end;
+  end;
+
+begin
+  Root := TJSONObject.Create;
+  NodesArray := TJSONArray.Create;
+  
+  try
+    // 使用 TJSONString.Create 确保正确的字符串格式
+    Root.AddPair('version', TJSONString.Create('1.1'));
+    Root.AddPair('saveTime', TJSONString.Create(DateTimeToStr(Now)));
+    
+    // 添加空的节点数组
+    Root.AddPair('nodes', NodesArray);
+    
+    // 添加所有根节点
+    var Node := TreeView1.Items.GetFirstNode;
+    while Assigned(Node) do
+    begin
+      if Node.Level = 0 then
+        AddNodeToJson(Node, NodesArray);
+      Node := Node.getNextSibling;
+    end;
+    
+    // 直接保存 JSON 字符串
+    TFile.WriteAllText(FileName, Root.ToString, TEncoding.UTF8);
+  finally
+    Root.Free;
+  end;
+end;
+```
+
+这个过程负责：
+1. 将节点数据转换为 JSON 格式
+2. 递归处理子节点
+3. 保存节点的标题、内容和状态
+4. 确保正确的内存管理
+
+现在编译错误应该解决了。
+
+---
+
 
 
 ---

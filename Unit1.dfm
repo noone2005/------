@@ -31,9 +31,6 @@ object Form1: TForm1
       PopupMenu = PopupMenu1
       TabOrder = 0
       OnChange = TreeView1Change
-      ExplicitLeft = 136
-      ExplicitTop = 20
-      ExplicitWidth = 208
     end
     object StatusBar1: TStatusBar
       Left = 1
@@ -41,7 +38,6 @@ object Form1: TForm1
       Width = 311
       Height = 19
       Panels = <>
-      ExplicitWidth = 383
     end
   end
   object pnlRight: TPanel
@@ -52,8 +48,6 @@ object Form1: TForm1
     Align = alClient
     Caption = 'pnlRight'
     TabOrder = 1
-    ExplicitLeft = 385
-    ExplicitWidth = 480
     object Splitter1: TSplitter
       Left = 1
       Top = 1
@@ -70,7 +64,6 @@ object Form1: TForm1
         'Memo1')
       TabOrder = 0
       OnChange = Memo1Change
-      ExplicitWidth = 470
     end
   end
   object MainMenu1: TMainMenu

@@ -514,7 +514,7 @@ _**Assistant**_
 
 是的，可以让 JSON 文件更易读。我们可以在保存文件时添加格式化处理。以下是实现代码：
 
-```pascal
+```pascal:Win32/Debug/我的笔记.note
 procedure SaveNoteFile(const FileName: string; const JsonData: TJSONObject);
 var
   JsonString: string;
@@ -580,6 +580,338 @@ end;
 ```
 
 这样的格式更容易阅读和调试。如果担心文件体积，您也可以在发布版本时选择不格式化，直接保存为单行。
+
+---
+
+_**User**_
+
+怎样回退到原来的代码
+
+---
+
+_**Assistant**_
+
+在 Delphi 中有几种方法可以回退到原来的代码：
+
+1. **使用 Ctrl+Z 撤销**
+- 如果刚刚做了修改，可以直接按 `Ctrl+Z` 进行撤销
+
+2. **使用本地历史记录**
+- 在 Delphi IDE 中，选择菜单 `File -> Local History`
+- 选择 `View Local History`
+- 在弹出的窗口中可以看到文件的历史版本
+- 选择想要回退到的版本，点击 `Revert` 按钮
+
+3. **使用备份文件**
+- Delphi 会自动创建 `.~pas` 备份文件
+- 在项目目录下找到 `Unit1.~pas` 文件
+- 将其内容复制回 `Unit1.pas`
+
+4. **使用源代码管理**
+- 如果您使用了 Git 等版本控制系统
+- 可以使用 `git checkout -- Unit1.pas` 命令回退文件
+- 或在 IDE 的版本控制界面中操作
+
+建议：
+1. 养成经常保存代码的习惯
+2. 重要修改前先备份
+3. 最好使用版本控制系统来管理代码
+
+---
+
+_**User**_
+
+如何使用最好使用版本控制系统来管理代码
+
+---
+
+_**Assistant**_
+
+
+
+我来介绍如何使用 Git 来管理 Delphi 项目代码：
+
+1. **初始设置**
+```bash
+# 安装 Git
+# 下载地址：https://git-scm.com/downloads
+
+# 设置用户信息
+git config --global user.name "你的名字"
+git config --global user.email "你的邮箱"
+```
+
+2. **项目初始化**
+```bash
+# 进入项目目录
+cd D:\我的项目\备忘录
+
+# 初始化 Git 仓库
+git init
+
+# 创建 .gitignore 文件，忽略不需要版本控制的文件
+```
+
+3. **.gitignore 文件内容**
+```text
+# Delphi 编译生成的文件
+*.dcu
+*.exe
+*.dll
+*.bpl
+*.bpi
+*.dcp
+*.so
+*.apk
+*.drc
+*.map
+*.dres
+*.rsm
+*.tds
+*.dcu
+*.lib
+*.a
+*.o
+*.ocx
+
+# 本地配置文件
+*.local
+*.identcache
+*.projdata
+*.tvsconfig
+*.dsk
+
+# 备份文件
+*.~*
+
+# Win32/Win64 输出目录
+Win32/
+Win64/
+
+# 日志文件
+*.log
+```
+
+4. **基本使用流程**
+```bash
+# 查看文件状态
+git status
+
+# 添加文件到暂存区
+git add Unit1.pas
+# 或添加所有文件
+git add .
+
+# 提交更改
+git commit -m "添加了备忘录基本功能"
+
+# 查看提交历史
+git log
+```
+
+5. **分支管理**
+```bash
+# 创建新分支
+git branch feature-reminder
+
+# 切换分支
+git checkout feature-reminder
+
+# 合并分支
+git checkout main
+git merge feature-reminder
+```
+
+6. **远程仓库操作**
+```bash
+# 添加远程仓库
+git remote add origin https://github.com/用户名/项目名.git
+
+# 推送到远程
+git push -u origin main
+
+# 从远程拉取
+git pull origin main
+```
+
+7. **常用命令说明**
+```bash
+# 撤销未提交的修改
+git checkout -- Unit1.pas
+
+# 撤销最后一次提交
+git reset --soft HEAD^
+
+# 查看某个文件的修改历史
+git log -p Unit1.pas
+
+# 创建标签（版本号）
+git tag v1.0.0
+```
+
+8. **使用图形界面工具**
+- SourceTree
+- GitHub Desktop
+- TortoiseGit
+
+9. **最佳实践**
+```
+1. 经常性提交代码
+   git commit -m "完成登录功能"
+
+2. 提交信息要清晰
+   - 新功能: "feat: 添加备忘录提醒功能"
+   - 修复bug: "fix: 修复保存时崩溃问题"
+   - 优化: "optimize: 优化数据加载性能"
+
+3. 使用分支开发新功能
+   git checkout -b feature-export
+   
+4. 定期推送到远程备份
+   git push origin main
+```
+
+10. **团队协作建议**
+```
+1. 建立分支规范
+   - main: 主分支，稳定版本
+   - develop: 开发分支
+   - feature/*: 功能分支
+   - hotfix/*: 紧急修复分支
+
+2. 代码审查流程
+   - 创建 Pull Request
+   - 团队成员审查代码
+   - 通过后合并到主分支
+```
+
+注意事项：
+1. 提交前先测试代码是否正常运行
+2. 不要提交编译生成的文件
+3. 保持提交粒度适中，既不要太大也不要太小
+4. 定期备份到远程仓库
+5. 重要的版本记得打标签
+
+这样可以：
+- 随时回退到之前的版本
+- 方便多人协作开发
+- 跟踪代码变更历史
+- 安全备份代码
+
+---
+
+_**User**_
+
+git status
+
+---
+
+_**Assistant**_
+
+
+
+当您运行 `git status` 命令时，会显示当前工作目录的状态。让我解释一下可能看到的不同状态：
+
+1. **干净的工作目录**
+```bash
+$ git status
+On branch main
+nothing to commit, working tree clean
+```
+这表示所有文件都已提交，没有任何修改。
+
+2. **有未跟踪的文件**
+```bash
+$ git status
+On branch main
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        Unit2.pas
+        新建文件夹/
+
+nothing added to commit but untracked files present (use "git add" to track)
+```
+这表示有新文件还未被 Git 管理。
+
+3. **有已修改但未暂存的文件**
+```bash
+$ git status
+On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   Unit1.pas
+        modified:   Project1.dpr
+```
+这表示已跟踪的文件有了新的修改。
+
+4. **有已暂存待提交的文件**
+```bash
+$ git status
+On branch main
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        modified:   Unit1.pas
+        new file:   Unit2.pas
+```
+这表示文件已经准备好可以提交了。
+
+处理建议：
+
+1. **对于未跟踪的文件**
+```bash
+# 添加单个文件
+git add Unit2.pas
+
+# 添加所有文件
+git add .
+
+# 如果不需要跟踪，添加到 .gitignore
+echo "Unit2.pas" >> .gitignore
+```
+
+2. **对于已修改的文件**
+```bash
+# 查看具体修改
+git diff Unit1.pas
+
+# 添加到暂存区
+git add Unit1.pas
+
+# 撤销修改
+git checkout -- Unit1.pas
+```
+
+3. **对于已暂存的文件**
+```bash
+# 提交修改
+git commit -m "更新了Unit1的代码"
+
+# 取消暂存
+git reset HEAD Unit1.pas
+```
+
+4. **常用组合命令**
+```bash
+# 添加所有修改并提交
+git add .
+git commit -m "提交所有更改"
+
+# 或者简写为
+git commit -am "提交所有更改"
+```
+
+注意事项：
+1. 经常使用 `git status` 检查状态
+2. 提交前仔细检查修改内容
+3. 提交信息要清晰明了
+4. 注意是否有不应该提交的文件
+
+这样可以：
+- 清楚了解当前工作目录状态
+- 避免提交不必要的文件
+- 方便管理代码修改
+- 减少误操作的可能
 
 ---
 

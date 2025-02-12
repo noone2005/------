@@ -119,7 +119,7 @@ procedure TForm1.FormCreate(Sender: TObject);
 var
   DefaultNoteFile: string;
 begin
-  Caption := '大飞的笔记本';
+  Caption := '我的笔记本 开发者：大飞';
   
   // 设置窗体属性
   Width := 1200;

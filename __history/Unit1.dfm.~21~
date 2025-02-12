@@ -70,7 +70,6 @@ object Form1: TForm1
         Align = alClient
         ScrollBars = ssBoth
         TabOrder = 0
-        OnChange = Memo1Change
       end
     end
     object pnlRightBottom: TPanel
@@ -98,15 +97,15 @@ object Form1: TForm1
         Align = alClient
         Columns = <
           item
-            Caption = #25991#20214#21517
+            Caption = '文件名'
             Width = 200
           end
           item
-            Caption = #22791#27880
+            Caption = '备注'
             Width = 300
           end
           item
-            Caption = #26102#38388
+            Caption = '时间'
             Width = 150
           end>
         ReadOnly = True

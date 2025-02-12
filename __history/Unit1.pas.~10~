@@ -1,4 +1,4 @@
-unit Unit1;
+﻿unit Unit1;
 
 interface
 
@@ -34,8 +34,6 @@ type
     OpenDialog1: TOpenDialog;
     Timer1: TTimer;
     StatusBar1: TStatusBar;
-    Panel1: TPanel;
-    ListBox1: TListBox;
 
     procedure FormCreate(Sender: TObject);
     procedure TreeView1Change(Sender: TObject; Node: TTreeNode);

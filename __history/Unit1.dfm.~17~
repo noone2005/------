@@ -1,7 +1,7 @@
 object Form1: TForm1
   Left = 0
   Top = 0
-  Caption = #28598#1095#58851#37928#21229#29802#29825#29256#28272
+  Caption = '大飞的笔记本'
   ClientHeight = 599
   ClientWidth = 983
   Color = clBtnFace
@@ -30,7 +30,6 @@ object Form1: TForm1
       PopupMenu = PopupMenu1
       TabOrder = 0
       OnChange = TreeView1Change
-      OnEdited = TreeView1Edited
     end
     object StatusBar1: TStatusBar
       Left = 1
@@ -51,32 +50,30 @@ object Form1: TForm1
       Left = 1
       Top = 1
       Width = 8
-      Height = 398
-      ExplicitHeight = 597
+      Height = 597
     end
     object pnlRightTop: TPanel
-      Left = 9
-      Top = 1
-      Width = 660
-      Height = 398
+      Left = 0
+      Top = 0
+      Width = 670
+      Height = 400
       Align = alClient
       BevelOuter = bvNone
       TabOrder = 0
       object Memo1: TMemo
         Left = 0
         Top = 0
-        Width = 660
-        Height = 398
+        Width = 670
+        Height = 400
         Align = alClient
         ScrollBars = ssBoth
         TabOrder = 0
-        OnChange = Memo1Change
       end
     end
     object pnlRightBottom: TPanel
-      Left = 1
-      Top = 399
-      Width = 668
+      Left = 0
+      Top = 400
+      Width = 670
       Height = 199
       Align = alBottom
       BevelOuter = bvNone
@@ -84,29 +81,28 @@ object Form1: TForm1
       object Splitter2: TSplitter
         Left = 0
         Top = 0
-        Width = 668
+        Width = 670
         Height = 3
         Cursor = crVSplit
         Align = alTop
-        ExplicitWidth = 670
       end
       object lvFiles: TListView
         Left = 0
         Top = 3
-        Width = 668
+        Width = 670
         Height = 196
         Align = alClient
         Columns = <
           item
-            Caption = #25991#20214#21517
+            Caption = '文件名'
             Width = 200
           end
           item
-            Caption = #22791#27880
-            Width = 300
+            Caption = '备注'
+            Width = 400
           end
           item
-            Caption = #26102#38388
+            Caption = '添加时间'
             Width = 150
           end>
         ReadOnly = True
@@ -121,13 +117,13 @@ object Form1: TForm1
     Left = 441
     Top = 272
     object mnuFile: TMenuItem
-      Caption = #25991#20214
+      Caption = '文件(&F)'
       object mnuSave: TMenuItem
-        Caption = #20445#23384
+        Caption = '保存(&S)'
         OnClick = mnuSaveClick
       end
       object mnuLoad: TMenuItem
-        Caption = #25171#24320
+        Caption = '打开(&O)'
         OnClick = mnuLoadClick
       end
     end
@@ -136,19 +132,19 @@ object Form1: TForm1
     Left = 97
     Top = 344
     object mnuAddLevel1: TMenuItem
-      Caption = #23075#35826#23006#28051#8364#32510#1093#27952#35120'?'
+      Caption = '添加一级目录'
       OnClick = mnuAddLevel1Click
     end
     object mnuAddLevel2: TMenuItem
-      Caption = #23075#35826#23006#27996#23680#39559#37929#57788#32141
+      Caption = '添加二级目录'
       OnClick = mnuAddLevel2Click
     end
     object mnuAddLevel3: TMenuItem
-      Caption = #23075#35826#23006#28051#22796#39559#37929#57788#32141
+      Caption = '添加三级目录'
       OnClick = mnuAddLevel3Click
     end
     object mnuDelete: TMenuItem
-      Caption = #37714#29371#27342
+      Caption = '删除'
       OnClick = mnuDeleteClick
     end
   end
@@ -166,22 +162,22 @@ object Form1: TForm1
     Top = 520
   end
   object pmFiles: TPopupMenu
-    Left = 576
-    Top = 272
+    Left = 456
+    Top = 280
     object mnuAddFile: TMenuItem
-      Caption = #28155#21152#25991#20214
+      Caption = '添加文件'
       OnClick = mnuAddFileClick
     end
     object mnuOpenFile: TMenuItem
-      Caption = #25171#24320#25991#20214
+      Caption = '打开文件'
       OnClick = mnuOpenFileClick
     end
     object mnuEditNote: TMenuItem
-      Caption = #22791#27880#25991#20214
+      Caption = '编辑备注'
       OnClick = mnuEditNoteClick
     end
     object mnuRemoveFile: TMenuItem
-      Caption = #21024#38500#25991#20214
+      Caption = '删除文件'
       OnClick = mnuRemoveFileClick
     end
   end
